@@ -1,6 +1,8 @@
 package com.devsuperior.dscatalog.resources;
 
 import java.util.List;
+
+import com.devsuperior.dscatalog.dto.CategoryDTO;
 import com.devsuperior.dscatalog.entities.Category;
 import com.devsuperior.dscatalog.services.CategoryService;
 
@@ -23,8 +25,8 @@ public class CategoryResources {
     }
     
     @GetMapping
-    public ResponseEntity<List<Category>> findAll() { // Objeto do spring que vai encapsular a resposta http => ResponseEntity
-        List<Category> list = categoryService.findAll();
+    public ResponseEntity<List<CategoryDTO>> findAll() { // Objeto do spring que vai encapsular a resposta http => ResponseEntity
+        List<CategoryDTO> list = categoryService.findAll();
         return ResponseEntity.ok().body(list);
     }
 
