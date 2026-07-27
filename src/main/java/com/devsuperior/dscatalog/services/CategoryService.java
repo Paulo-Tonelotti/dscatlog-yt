@@ -1,17 +1,21 @@
 package com.devsuperior.dscatalog.services;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.devsuperior.dscatalog.dto.CategoryDTO;
 import com.devsuperior.dscatalog.entities.Category;
 import com.devsuperior.dscatalog.repositories.CategoryRespository;
+import com.devsuperior.dscatalog.services.exceptions.DatabaseException;
+import com.devsuperior.dscatalog.services.exceptions.ResourceNotFoundException;
 
-import com.devsuperior.dscatalog.services.exceptions.EntityNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class CategoryService {
@@ -23,15 +27,15 @@ public class CategoryService {
     }
     
     @Transactional(readOnly = true)
-    public List<CategoryDTO> findAll() {
-        List<Category> list =  categoryRespository.findAll();
-        return list.stream().map(category -> new CategoryDTO(category)).collect(Collectors.toList());
+    public Page<CategoryDTO> findAllPaged(PageRequest pageRequest) {
+        Page<Category> list =  categoryRespository.findAll(pageRequest);
+        return list.map(category -> new CategoryDTO(category));
     }
 
     @Transactional(readOnly = true)
     public CategoryDTO findById(Long id) {
         Optional<Category> obj = categoryRespository.findById(id);
-        Category entity = obj.orElseThrow(() -> new EntityNotFoundException("Entity not found"));
+        Category entity = obj.orElseThrow(() -> new ResourceNotFoundException("Entity not found"));
         return new CategoryDTO(entity);
     }
 
@@ -41,5 +45,31 @@ public class CategoryService {
         entity.setName(categoryDTO.getName());
         entity = categoryRespository.save(entity);
         return new CategoryDTO(entity);
+    }
+
+    @Transactional
+    public CategoryDTO updateCategory(Long id, CategoryDTO categoryDTO) {
+        try {
+            Category entity = categoryRespository.getReferenceById(id);
+            entity.setName(categoryDTO.getName());
+            entity = categoryRespository.save(entity);
+            return new CategoryDTO(entity);
+        } catch (EntityNotFoundException e) {
+            throw new ResourceNotFoundException("Id not found " + id);
+        }
+    }
+
+    @Transactional(propagation = Propagation.SUPPORTS)
+    public void deleteCategory(Long id) {
+        if (!categoryRespository.existsById(id)) {
+            throw new ResourceNotFoundException("Id not found " + id);
+        }
+        
+        try {
+            categoryRespository.deleteById(id);
+            categoryRespository.flush(); // Garante a execução imediata para capturar exceções de integridade no catch
+        } catch (DataIntegrityViolationException e) {
+            throw new DatabaseException("Integrity violation");
+        }
     }
 }
